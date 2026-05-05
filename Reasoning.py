@@ -44,7 +44,9 @@ def f_harga_mahal(x):
     return 0
 
 # ==========================================================
-# 2. INFERENSI & 3. DEFUZZIFICATION (Metode Sugeno)
+# 2. INFERENSI 
+# ==========================================================
+# 3. DEFUZZIFICATION (Metode Sugeno)
 # ==========================================================
 
 def hitung_fuzzy(servis, harga):
@@ -119,71 +121,76 @@ def hitung_fuzzy(servis, harga):
     return output
 
 # ==========================================================
-# 3. PROSES DATA (Membaca & Menyimpan File)
+# 4. PROSES DATA (Membaca & Menyimpan File)
 # ==========================================================
 
 def main():
     data_restoran = []
     
     try:
-        # Membaca data tanpa library fuzzy[cite: 1]
         with open('restoran.csv', mode='r') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                # Lengkapi pengambilan data dari kolom CSV
-                id_val = int(row.get('id Pelanggan', 0))
-                servis = int(row.get('Pelayanan', 0))
-                harga = int(row.get('harga', 0))
+                # 1. Pastikan nama kolom di row.get() sesuai dengan header di file CSV kamu
+                # Jika di CSV kolomnya masih 'id Pelanggan', ganti di sini
+                id_val = row.get('id Pelanggan') or row.get('id_restoran')
+                servis_val = row.get('Pelayanan')
+                harga_val = row.get('harga')
                 
-                # --- Bagian Integrasi (Biarkan seperti ini) ---
-                # Proses Fuzzification, Inferensi, dan Defuzzification
+                if id_val is None or servis_val is None or harga_val is None:
+                    continue
+                
+                servis = float(servis_val)
+                harga = float(harga_val)
+                
                 skor = hitung_fuzzy(servis, harga)
                 
-                # Simpan hasil ke dictionary
+                # 2. KRUSIAL: Simpan dengan key 'id_restoran' agar bisa dipanggil nanti
+                # Jika x nya ingin diambil dari servis buruk dan harga mahal
+                # if servis <= 50 and harga >= 45000: (Hapus Komen ini)
                 data_restoran.append({
-                    'id': id_val,
+                    'id_restoran': id_val, # Pastikan key ini tertulis tepat seperti ini
                     'servis': servis,
                     'harga': harga,
                     'skor': skor
                 })
-            
-    except FileNotFoundError:
-        print("Error: File restoran.csv tidak ditemukan!")
-        return
     except Exception as e:
-        print(f"Terjadi kesalahan: {e}")
+        print(f"Terjadi kesalahan pembacaan: {e}")
         return
 
-# ==========================================================
-# 4. BAGIAN OUTPUT (Menampilkan dan Menyimpan Hasil)
-# ==========================================================
-
-    # Sorting manual berdasarkan skor tertinggi[cite: 1]
+    # 3. Sorting berdasarkan skor
     data_restoran.sort(key=lambda x: x['skor'], reverse=True)
+    top_5 = data_restoran[:10]
+
+    # 4. Bagian Output (Print)
+    print(" ")
+    print(" == 10 RESTORAN TERBAIK DI BANDUNG == ")
+    print(f"\n{'No':<4} | {'ID':<12} | {'Servis':<10} | {'Harga':<10} | {'Skor':<10}")
+    print("-" * 55)
     
-    # Ambil 5 restoran terbaik[cite: 1]
-    top_5 = data_restoran[:5]
+    for i, r in enumerate(top_5, 1):
+        # Panggil menggunakan key yang sama persis yaitu 'id_restoran'
+        print(f"{i:<4} | {str(r['id_restoran']):<12} | {r['servis']:<10.1f} | {r['harga']:<10.0f} | {r['skor']:<10.2f}")
 
-    # Menampilkan ke layar dengan proteksi NoneType[cite: 1]
-    print(f"{'ID':<5} | {'Servis':<10} | {'Harga':<10} | {'Skor':<10}")
-    print("-" * 45)
-    for r in top_5:
-        # Menggunakan r['id'] karena sudah kita simpan di dictionary 'data_restoran' di atas
-        print(f"{str(r['id']):<5} | {r['servis']:<10.1f} | {r['harga']:<10.0f} | {r['skor']:<10.2f}")
-
-    # Simpan ke file peringkat.csv
+    # 5. Simpan ke File peringkat.csv
     try:
         with open('peringkat.csv', mode='w', newline='') as file:
-            # Pastikan fieldnames di sini SAMA PERSIS dengan key di dictionary data_restoran
-            kolom = ['id', 'servis', 'harga', 'skor'] 
+            kolom = ['no', 'id_restoran', 'servis', 'harga', 'skor'] 
             writer = csv.DictWriter(file, fieldnames=kolom)
-            
             writer.writeheader()
-            writer.writerows(top_5)
-        
-        print("\nBerhasil! Hasil 5 terbaik disimpan di peringkat.csv")
+            
+            data_dengan_nomor = []
+            for i, r in enumerate(top_5, 1):
+                row_baru = r.copy()
+                row_baru['no'] = i
+                data_dengan_nomor.append(row_baru)
+            
+            writer.writerows(data_dengan_nomor)
+        print("\nBerhasil! Hasil 10 terbaik disimpan di peringkat.csv")
     except Exception as e:
         print(f"Gagal menyimpan file: {e}")
+        
+    print(" ")
 
 if __name__ == "__main__":
     main()
